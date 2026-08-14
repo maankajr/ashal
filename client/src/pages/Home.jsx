@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
+import { featuredProductIds, products } from "../data/products";
 
 const categories = [
   {
@@ -56,72 +57,9 @@ const categories = [
   },
 ];
 
-const featuredProducts = [
-  {
-    id: 1,
-    name: "Apex Smartwatch Pro",
-    price: 189.0,
-    rating: 4.8,
-    image:
-      "https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 2,
-    name: "Velocity Running Sneakers",
-    price: 129.99,
-    rating: 4.7,
-    image:
-      "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 3,
-    name: "Pulse Wireless Earbuds",
-    price: 79.5,
-    rating: 4.6,
-    image:
-      "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 5,
-    name: "ClearVue Aviator Glasses",
-    price: 89.0,
-    rating: 4.5,
-    image:
-      "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 4,
-    name: "NovaBook Ultralight Laptop",
-    price: 999.0,
-    rating: 4.9,
-    image:
-      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 10,
-    name: "Urban Linen Overshirt",
-    price: 68.0,
-    rating: 4.2,
-    image:
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 7,
-    name: "PixelMax Pro Phone",
-    price: 749.0,
-    rating: 4.7,
-    image:
-      "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 6,
-    name: "IronCore Adjustable Dumbbells",
-    price: 149.0,
-    rating: 4.4,
-    image:
-      "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600&h=600&fit=crop&q=80",
-  },
-];
+const featuredProducts = featuredProductIds
+  .map((id) => products.find((product) => product.id === id))
+  .filter(Boolean);
 
 function Home() {
   return (

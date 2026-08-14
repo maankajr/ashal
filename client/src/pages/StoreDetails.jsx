@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard, { StarRating } from "../components/ProductCard";
+import { getProductsByStore } from "../data/products";
 
 const stores = {
   techvault: {
@@ -12,56 +13,6 @@ const stores = {
     banner:
       "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1400&h=400&fit=crop&q=80",
     logo: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=200&h=200&fit=crop&q=80",
-    products: [
-      {
-        id: 1,
-        name: "Apex Smartwatch Pro",
-        price: 189.0,
-        rating: 4.8,
-        image:
-          "https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=600&h=600&fit=crop&q=80",
-      },
-      {
-        id: 3,
-        name: "Pulse Wireless Earbuds",
-        price: 79.5,
-        rating: 4.6,
-        image:
-          "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=600&h=600&fit=crop&q=80",
-      },
-      {
-        id: 4,
-        name: "NovaBook Ultralight Laptop",
-        price: 999.0,
-        rating: 4.9,
-        image:
-          "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&h=600&fit=crop&q=80",
-      },
-      {
-        id: 7,
-        name: "PixelMax Pro Phone",
-        price: 749.0,
-        rating: 4.7,
-        image:
-          "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=600&h=600&fit=crop&q=80",
-      },
-      {
-        id: 8,
-        name: "SlateTab 11-inch Tablet",
-        price: 429.0,
-        rating: 4.6,
-        image:
-          "https://images.unsplash.com/photo-1561154464-82e9adf32764?w=600&h=600&fit=crop&q=80",
-      },
-      {
-        id: 11,
-        name: "Chrono Steel Dress Watch",
-        price: 245.0,
-        rating: 4.8,
-        image:
-          "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop&q=80",
-      },
-    ],
   },
   "stride-co": {
     name: "Stride & Co.",
@@ -70,70 +21,14 @@ const stores = {
     banner:
       "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1400&h=400&fit=crop&q=80",
     logo: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200&h=200&fit=crop&q=80",
-    products: [
-      {
-        id: 2,
-        name: "Velocity Running Sneakers",
-        price: 129.99,
-        rating: 4.7,
-        image:
-          "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=600&h=600&fit=crop&q=80",
-      },
-      {
-        id: 5,
-        name: "ClearVue Aviator Glasses",
-        price: 89.0,
-        rating: 4.5,
-        image:
-          "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=600&h=600&fit=crop&q=80",
-      },
-      {
-        id: 10,
-        name: "Urban Linen Overshirt",
-        price: 68.0,
-        rating: 4.2,
-        image:
-          "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=600&fit=crop&q=80",
-      },
-      {
-        id: 12,
-        name: "TrailFlex Training Shoes",
-        price: 110.0,
-        rating: 4.5,
-        image:
-          "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&h=600&fit=crop&q=80",
-      },
-      {
-        id: 6,
-        name: "IronCore Adjustable Dumbbells",
-        price: 149.0,
-        rating: 4.4,
-        image:
-          "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600&h=600&fit=crop&q=80",
-      },
-      {
-        id: 13,
-        name: "Studio Knit Jacket",
-        price: 94.0,
-        rating: 4.3,
-        image:
-          "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=600&h=600&fit=crop&q=80",
-      },
-      {
-        id: 14,
-        name: "Everyday Canvas Tote",
-        price: 32.0,
-        rating: 4.1,
-        image:
-          "https://images.unsplash.com/photo-1544816155-12df9643f363?w=600&h=600&fit=crop&q=80",
-      },
-    ],
   },
 };
 
 function StoreDetails() {
   const { storeId } = useParams();
   const store = stores[storeId] ?? stores.techvault;
+  const resolvedStoreId = stores[storeId] ? storeId : "techvault";
+  const storeProducts = getProductsByStore(resolvedStoreId);
 
   return (
     <div className="flex min-h-svh flex-col bg-slate-50">
@@ -165,7 +60,7 @@ function StoreDetails() {
             <h2 className="text-xl font-semibold text-slate-900">From this store</h2>
             <p className="mt-1 text-sm text-slate-600">Popular products sold by {store.name}.</p>
             <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              {store.products.map((product) => (
+              {storeProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>

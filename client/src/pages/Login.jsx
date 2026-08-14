@@ -1,17 +1,26 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import { parseApiError } from "../api/auth.js";
+import { useAuth } from "../store/AuthContext";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function Login() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
-  const [submitted, setSubmitted] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   function handleChange(event) {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
+    if (errors[name]) {
+      setErrors((current) => ({ ...current, [name]: undefined }));
+    }
+    if (formError) setFormError("");
   }
 
   function validate() {
@@ -22,11 +31,34 @@ function Login() {
     return nextErrors;
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     const nextErrors = validate();
     setErrors(nextErrors);
-    setSubmitted(Object.keys(nextErrors).length === 0);
+    setFormError("");
+
+    if (Object.keys(nextErrors).length > 0) return;
+
+    setSubmitting(true);
+    try {
+      const result = await login({
+        email: form.email.trim(),
+        password: form.password,
+      });
+      if (result.user?.role === "admin") {
+        navigate("/admin/dashboard", { replace: true });
+      } else if (result.user?.role === "vendor") {
+        navigate("/vendor/dashboard", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
+    } catch (error) {
+      const { message, fieldErrors } = parseApiError(error);
+      setErrors((current) => ({ ...current, ...fieldErrors }));
+      setFormError(message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -41,6 +73,12 @@ function Login() {
           <h1 className="text-2xl font-semibold text-slate-900">Login</h1>
           <p className="mt-1 text-sm text-slate-600">Welcome back to Ashal.</p>
 
+          {formError && (
+            <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {formError}
+            </p>
+          )}
+
           <label className="mt-6 block text-sm font-medium text-slate-800">
             Email
             <input
@@ -48,7 +86,8 @@ function Login() {
               name="email"
               value={form.email}
               onChange={handleChange}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-teal-600 focus:ring-2"
+              disabled={submitting}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-teal-600 focus:ring-2 disabled:opacity-60"
             />
             {errors.email && <p className="mt-1 text-xs text-rose-700">{errors.email}</p>}
           </label>
@@ -60,7 +99,8 @@ function Login() {
               name="password"
               value={form.password}
               onChange={handleChange}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-teal-600 focus:ring-2"
+              disabled={submitting}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-teal-600 focus:ring-2 disabled:opacity-60"
             />
             {errors.password && <p className="mt-1 text-xs text-rose-700">{errors.password}</p>}
           </label>
@@ -73,14 +113,11 @@ function Login() {
 
           <button
             type="submit"
-            className="mt-5 w-full rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
+            disabled={submitting}
+            className="mt-5 w-full rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Login
+            {submitting ? "Signing in…" : "Login"}
           </button>
-
-          {submitted && (
-            <p className="mt-3 text-sm text-emerald-700">Looks good — API login will be wired up later.</p>
-          )}
 
           <p className="mt-4 text-center text-sm text-slate-600">
             Don&apos;t have an account?{" "}

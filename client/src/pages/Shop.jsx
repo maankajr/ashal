@@ -3,117 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
-
-const products = [
-  {
-    id: 1,
-    name: "Apex Smartwatch Pro",
-    price: 189.0,
-    rating: 4.8,
-    category: "Watches",
-    image:
-      "https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 2,
-    name: "Velocity Running Sneakers",
-    price: 129.99,
-    rating: 4.7,
-    category: "Shoes",
-    image:
-      "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 3,
-    name: "Pulse Wireless Earbuds",
-    price: 79.5,
-    rating: 4.6,
-    category: "Earbuds",
-    image:
-      "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 4,
-    name: "NovaBook Ultralight Laptop",
-    price: 999.0,
-    rating: 4.9,
-    category: "Laptops",
-    image:
-      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 5,
-    name: "ClearVue Aviator Glasses",
-    price: 89.0,
-    rating: 4.5,
-    category: "Glasses",
-    image:
-      "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 6,
-    name: "IronCore Adjustable Dumbbells",
-    price: 149.0,
-    rating: 4.4,
-    category: "Gym Equipment",
-    image:
-      "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 7,
-    name: "PixelMax Pro Phone",
-    price: 749.0,
-    rating: 4.7,
-    category: "Phones",
-    image:
-      "https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 8,
-    name: "SlateTab 11-inch Tablet",
-    price: 429.0,
-    rating: 4.6,
-    category: "Tablets",
-    image:
-      "https://images.unsplash.com/photo-1561154464-82e9adf32764?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 9,
-    name: "Cityline Classic Sedan",
-    price: 18500.0,
-    rating: 4.3,
-    category: "Cars",
-    image:
-      "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 10,
-    name: "Urban Linen Overshirt",
-    price: 68.0,
-    rating: 4.2,
-    category: "Fashion & Clothes",
-    image:
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 11,
-    name: "Chrono Steel Dress Watch",
-    price: 245.0,
-    rating: 4.8,
-    category: "Watches",
-    image:
-      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 12,
-    name: "TrailFlex Training Shoes",
-    price: 110.0,
-    rating: 4.5,
-    category: "Shoes",
-    image:
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&h=600&fit=crop&q=80",
-  },
-];
+import { listProducts, mapProductForCard } from "../api/products.js";
 
 const categories = [
   "Watches",
@@ -143,6 +33,41 @@ function Shop() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("newest");
   const [page, setPage] = useState(1);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProducts() {
+      setLoading(true);
+      try {
+        const sortParam =
+          sort === "price-asc"
+            ? "price_asc"
+            : sort === "price-desc"
+              ? "price_desc"
+              : sort === "rating"
+                ? "rating"
+                : "newest";
+
+        const result = await listProducts({ limit: 100, sort: sortParam, q: search || undefined });
+        if (!cancelled) {
+          setProducts(result.items.map(mapProductForCard));
+        }
+      } catch {
+        if (!cancelled) setProducts([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadProducts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sort, search]);
 
   useEffect(() => {
     if (categoryFromUrl && categories.includes(categoryFromUrl)) {
@@ -184,11 +109,11 @@ function Shop() {
       if (sort === "price-asc") return a.price - b.price;
       if (sort === "price-desc") return b.price - a.price;
       if (sort === "rating") return b.rating - a.rating;
-      return b.id - a.id;
+      return String(b.id).localeCompare(String(a.id));
     });
 
     return next;
-  }, [selectedCategories, maxPrice, minRating, search, sort]);
+  }, [products, selectedCategories, maxPrice, minRating, search, sort]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -295,10 +220,16 @@ function Shop() {
             {filtered.length} product{filtered.length === 1 ? "" : "s"}
           </p>
 
-          {visible.length > 0 ? (
+          {loading ? (
+            <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 8 }).map((_, index) => (
+                <div key={index} className="h-64 animate-pulse rounded-xl bg-slate-200" />
+              ))}
+            </div>
+          ) : visible.length > 0 ? (
             <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
               {visible.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard key={product.id} product={product} showAddButton showWishlist />
               ))}
             </div>
           ) : (

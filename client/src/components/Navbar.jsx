@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
+import { useAuth } from "../store/AuthContext";
 import { useCart } from "../store/CartContext";
 
 const navLinkClass = ({ isActive }) =>
@@ -7,9 +8,80 @@ const navLinkClass = ({ isActive }) =>
     isActive ? "text-teal-700" : "text-slate-600 hover:text-slate-900"
   }`;
 
+function AuthControls({ onNavigate, compact = false }) {
+  const { user, isAuthenticated, logout } = useAuth();
+
+  if (isAuthenticated) {
+    return (
+      <div className={`flex items-center ${compact ? "flex-col items-start gap-3" : "gap-3"}`}>
+        {user.role === "vendor" && (
+          <NavLink
+            to="/vendor/dashboard"
+            className="text-sm font-medium text-teal-700 hover:text-teal-800"
+            onClick={onNavigate}
+          >
+            Vendor
+          </NavLink>
+        )}
+        {user.role === "admin" && (
+          <NavLink
+            to="/admin/dashboard"
+            className="text-sm font-medium text-teal-700 hover:text-teal-800"
+            onClick={onNavigate}
+          >
+            Admin
+          </NavLink>
+        )}
+        <NavLink
+          to="/profile"
+          className="text-sm font-medium text-slate-700 hover:text-slate-900"
+          onClick={onNavigate}
+        >
+          {user.name}
+        </NavLink>
+        <button
+          type="button"
+          onClick={() => {
+            logout();
+            onNavigate?.();
+          }}
+          className={`text-sm font-medium text-slate-600 hover:text-slate-900 ${
+            compact ? "" : "rounded-lg border border-slate-300 px-3 py-2 hover:bg-slate-50"
+          }`}
+        >
+          Logout
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex items-center ${compact ? "flex-col items-start gap-3" : "gap-3"}`}>
+      <NavLink to="/login" className={navLinkClass} onClick={onNavigate}>
+        Login
+      </NavLink>
+      <NavLink
+        to="/register"
+        className={`text-sm font-medium ${
+          compact
+            ? "text-teal-700 hover:text-teal-800"
+            : "rounded-lg bg-teal-700 px-3 py-2 text-white hover:bg-teal-800"
+        }`}
+        onClick={onNavigate}
+      >
+        Register
+      </NavLink>
+    </div>
+  );
+}
+
 function Navbar() {
   const [open, setOpen] = useState(false);
   const { cartCount } = useCart();
+
+  function closeMenu() {
+    setOpen(false);
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -59,24 +131,7 @@ function Navbar() {
               </span>
             )}
           </NavLink>
-          <NavLink
-            to="/profile"
-            className="text-sm font-medium text-slate-600 hover:text-slate-900"
-          >
-            Profile
-          </NavLink>
-          <NavLink
-            to="/login"
-            className="text-sm font-medium text-slate-600 hover:text-slate-900"
-          >
-            Login
-          </NavLink>
-          <NavLink
-            to="/register"
-            className="rounded-lg bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800"
-          >
-            Register
-          </NavLink>
+          <AuthControls />
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
@@ -133,30 +188,22 @@ function Navbar() {
       {open && (
         <nav className="border-t border-slate-200 px-4 py-3 md:hidden">
           <div className="flex flex-col gap-3">
-            <NavLink to="/" className={navLinkClass} end onClick={() => setOpen(false)}>
+            <NavLink to="/" className={navLinkClass} end onClick={closeMenu}>
               Home
             </NavLink>
-            <NavLink to="/shop" className={navLinkClass} onClick={() => setOpen(false)}>
+            <NavLink to="/shop" className={navLinkClass} onClick={closeMenu}>
               Shop
             </NavLink>
-            <NavLink to="/wishlist" className={navLinkClass} onClick={() => setOpen(false)}>
+            <NavLink to="/wishlist" className={navLinkClass} onClick={closeMenu}>
               Wishlist
             </NavLink>
-            <NavLink to="/orders" className={navLinkClass} onClick={() => setOpen(false)}>
+            <NavLink to="/orders" className={navLinkClass} onClick={closeMenu}>
               Orders
             </NavLink>
-            <NavLink to="/cart" className={navLinkClass} onClick={() => setOpen(false)}>
+            <NavLink to="/cart" className={navLinkClass} onClick={closeMenu}>
               Cart ({cartCount})
             </NavLink>
-            <NavLink to="/profile" className={navLinkClass} onClick={() => setOpen(false)}>
-              Profile
-            </NavLink>
-            <NavLink to="/login" className={navLinkClass} onClick={() => setOpen(false)}>
-              Login
-            </NavLink>
-            <NavLink to="/register" className={navLinkClass} onClick={() => setOpen(false)}>
-              Register
-            </NavLink>
+            <AuthControls compact onNavigate={closeMenu} />
           </div>
         </nav>
       )}

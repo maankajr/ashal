@@ -1,10 +1,14 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import { parseApiError } from "../api/auth.js";
+import { useAuth } from "../store/AuthContext";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function Register() {
+  const navigate = useNavigate();
+  const { register } = useAuth();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -12,30 +16,54 @@ function Register() {
     confirmPassword: "",
   });
   const [errors, setErrors] = useState({});
-  const [submitted, setSubmitted] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   function handleChange(event) {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
+    if (errors[name]) {
+      setErrors((current) => ({ ...current, [name]: undefined }));
+    }
+    if (formError) setFormError("");
   }
 
   function validate() {
     const nextErrors = {};
     if (!form.name.trim()) nextErrors.name = "Name is required.";
+    else if (form.name.trim().length < 2) nextErrors.name = "Name must be at least 2 characters.";
     if (!form.email.trim()) nextErrors.email = "Email is required.";
     else if (!emailPattern.test(form.email.trim())) nextErrors.email = "Enter a valid email address.";
     if (!form.password) nextErrors.password = "Password is required.";
-    else if (form.password.length < 6) nextErrors.password = "Password must be at least 6 characters.";
+    else if (form.password.length < 8) nextErrors.password = "Password must be at least 8 characters.";
     if (!form.confirmPassword) nextErrors.confirmPassword = "Confirm your password.";
     else if (form.confirmPassword !== form.password) nextErrors.confirmPassword = "Passwords do not match.";
     return nextErrors;
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     const nextErrors = validate();
     setErrors(nextErrors);
-    setSubmitted(Object.keys(nextErrors).length === 0);
+    setFormError("");
+
+    if (Object.keys(nextErrors).length > 0) return;
+
+    setSubmitting(true);
+    try {
+      await register({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        password: form.password,
+      });
+      navigate("/", { replace: true });
+    } catch (error) {
+      const { message, fieldErrors } = parseApiError(error);
+      setErrors((current) => ({ ...current, ...fieldErrors }));
+      setFormError(message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -50,6 +78,12 @@ function Register() {
           <h1 className="text-2xl font-semibold text-slate-900">Create an account</h1>
           <p className="mt-1 text-sm text-slate-600">Join Ashal to shop from local vendors.</p>
 
+          {formError && (
+            <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {formError}
+            </p>
+          )}
+
           <label className="mt-6 block text-sm font-medium text-slate-800">
             Name
             <input
@@ -57,7 +91,8 @@ function Register() {
               name="name"
               value={form.name}
               onChange={handleChange}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-teal-600 focus:ring-2"
+              disabled={submitting}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-teal-600 focus:ring-2 disabled:opacity-60"
             />
             {errors.name && <p className="mt-1 text-xs text-rose-700">{errors.name}</p>}
           </label>
@@ -69,7 +104,8 @@ function Register() {
               name="email"
               value={form.email}
               onChange={handleChange}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-teal-600 focus:ring-2"
+              disabled={submitting}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-teal-600 focus:ring-2 disabled:opacity-60"
             />
             {errors.email && <p className="mt-1 text-xs text-rose-700">{errors.email}</p>}
           </label>
@@ -81,7 +117,8 @@ function Register() {
               name="password"
               value={form.password}
               onChange={handleChange}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-teal-600 focus:ring-2"
+              disabled={submitting}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-teal-600 focus:ring-2 disabled:opacity-60"
             />
             {errors.password && <p className="mt-1 text-xs text-rose-700">{errors.password}</p>}
           </label>
@@ -93,7 +130,8 @@ function Register() {
               name="confirmPassword"
               value={form.confirmPassword}
               onChange={handleChange}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-teal-600 focus:ring-2"
+              disabled={submitting}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-teal-600 focus:ring-2 disabled:opacity-60"
             />
             {errors.confirmPassword && (
               <p className="mt-1 text-xs text-rose-700">{errors.confirmPassword}</p>
@@ -102,16 +140,11 @@ function Register() {
 
           <button
             type="submit"
-            className="mt-6 w-full rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
+            disabled={submitting}
+            className="mt-6 w-full rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Register
+            {submitting ? "Creating account…" : "Register"}
           </button>
-
-          {submitted && (
-            <p className="mt-3 text-sm text-emerald-700">
-              Account details look valid — API registration will be wired up later.
-            </p>
-          )}
 
           <p className="mt-4 text-center text-sm text-slate-600">
             Already have an account?{" "}

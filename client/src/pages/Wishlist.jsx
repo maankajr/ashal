@@ -1,81 +1,60 @@
 import { useState } from "react";
 import { Heart } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
-import { useCart } from "../store/CartContext";
+import { parseApiError } from "../api/auth.js";
+import { useAuth } from "../store/AuthContext";
+import { useWishlist } from "../store/WishlistContext";
 
-const initialWishlist = [
-  {
-    id: 1,
-    name: "Apex Smartwatch Pro",
-    price: 189.0,
-    rating: 4.8,
-    storeName: "TechVault",
-    image:
-      "https://images.unsplash.com/photo-1434493789847-2f02dc6ca35d?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 2,
-    name: "Velocity Running Sneakers",
-    price: 129.99,
-    rating: 4.7,
-    storeName: "Stride & Co.",
-    image:
-      "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 3,
-    name: "Pulse Wireless Earbuds",
-    price: 79.5,
-    rating: 4.6,
-    storeName: "TechVault",
-    image:
-      "https://images.unsplash.com/photo-1606220588913-b3aacb4d2f46?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 5,
-    name: "ClearVue Aviator Glasses",
-    price: 89.0,
-    rating: 4.5,
-    storeName: "Stride & Co.",
-    image:
-      "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 4,
-    name: "NovaBook Ultralight Laptop",
-    price: 999.0,
-    rating: 4.9,
-    storeName: "TechVault",
-    image:
-      "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600&h=600&fit=crop&q=80",
-  },
-  {
-    id: 10,
-    name: "Urban Linen Overshirt",
-    price: 68.0,
-    rating: 4.2,
-    storeName: "Stride & Co.",
-    image:
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&h=600&fit=crop&q=80",
-  },
-];
+function WishlistSkeleton() {
+  return (
+    <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div key={index} className="space-y-2">
+          <div className="aspect-square animate-pulse rounded-xl bg-slate-200" />
+          <div className="h-10 animate-pulse rounded-lg bg-slate-100" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function Wishlist() {
-  const [items, setItems] = useState(initialWishlist);
+  const { isAuthenticated } = useAuth();
+  const { wishlistItems, wishlistLoading, removeItem, moveItemToCart } = useWishlist();
   const [movedId, setMovedId] = useState(null);
-  const { addItem } = useCart();
+  const [actionError, setActionError] = useState("");
+  const [busyId, setBusyId] = useState(null);
 
-  function removeFromWishlist(itemId) {
-    setItems((current) => current.filter((item) => item.id !== itemId));
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
   }
 
-  function moveToCart(product) {
-    addItem(product);
-    setMovedId(product.id);
-    setItems((current) => current.filter((item) => item.id !== product.id));
+  async function handleRemove(productId) {
+    setActionError("");
+    setBusyId(productId);
+    try {
+      await removeItem(productId);
+    } catch (error) {
+      setActionError(parseApiError(error).message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleMoveToCart(product) {
+    setActionError("");
+    setBusyId(product.id);
+    try {
+      await moveItemToCart(product.id);
+      setMovedId(product.id);
+    } catch (error) {
+      setActionError(parseApiError(error).message);
+    } finally {
+      setBusyId(null);
+    }
   }
 
   return (
@@ -86,11 +65,21 @@ function Wishlist() {
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Wishlist</h1>
         <p className="mt-1 text-sm text-slate-600">Saved items you can move to your cart anytime.</p>
 
-        {movedId && (
-          <p className="mt-4 text-sm text-emerald-700">Moved to cart. Continue shopping or check out when ready.</p>
+        {actionError && (
+          <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            {actionError}
+          </p>
         )}
 
-        {items.length === 0 ? (
+        {movedId && (
+          <p className="mt-4 text-sm text-emerald-700">
+            Moved to cart. Continue shopping or check out when ready.
+          </p>
+        )}
+
+        {wishlistLoading ? (
+          <WishlistSkeleton />
+        ) : wishlistItems.length === 0 ? (
           <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
             <p className="text-lg font-semibold text-slate-800">Your wishlist is empty.</p>
             <p className="mt-2 text-sm text-slate-500">Save products you love and come back to them later.</p>
@@ -103,14 +92,15 @@ function Wishlist() {
           </div>
         ) : (
           <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {items.map((product) => (
+            {wishlistItems.map((product) => (
               <div key={product.id} className="flex flex-col">
                 <div className="relative">
                   <ProductCard product={product} />
                   <button
                     type="button"
-                    onClick={() => removeFromWishlist(product.id)}
-                    className="absolute right-2 top-2 z-10 rounded-full bg-white/90 p-2 text-rose-600 shadow-sm hover:bg-white"
+                    disabled={busyId === product.id}
+                    onClick={() => handleRemove(product.id)}
+                    className="absolute right-2 top-2 z-10 rounded-full bg-white/90 p-2 text-rose-600 shadow-sm hover:bg-white disabled:opacity-60"
                     aria-label={`Remove ${product.name} from wishlist`}
                   >
                     <Heart className="h-4 w-4 fill-current" />
@@ -118,10 +108,11 @@ function Wishlist() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => moveToCart(product)}
-                  className="mt-2 rounded-lg bg-teal-700 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-800"
+                  disabled={busyId === product.id || product.stock <= 0}
+                  onClick={() => handleMoveToCart(product)}
+                  className="mt-2 rounded-lg bg-teal-700 px-3 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Move to Cart
+                  {product.stock <= 0 ? "Out of stock" : "Move to Cart"}
                 </button>
               </div>
             ))}

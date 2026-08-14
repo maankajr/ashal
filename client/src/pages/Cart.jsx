@@ -145,12 +145,12 @@ function Cart() {
                   <dd>${grandTotal.toFixed(2)}</dd>
                 </div>
               </dl>
-              <button
-                type="button"
-                className="mt-5 w-full rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
+              <Link
+                to="/checkout"
+                className="mt-5 block w-full rounded-lg bg-teal-700 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-teal-800"
               >
                 Proceed to Checkout
-              </button>
+              </Link>
               <Link
                 to="/shop"
                 className="mt-3 block text-center text-sm font-medium text-teal-700 hover:text-teal-800"
