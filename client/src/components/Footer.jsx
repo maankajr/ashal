@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Mail, MapPin } from "lucide-react";
+import AshalLogo from "./AshalLogo";
 
 const linkClass =
   "text-sm text-slate-400 transition-colors hover:text-teal-300";
@@ -47,10 +48,10 @@ function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
           <div className="sm:col-span-2 lg:col-span-1">
-            <Link to="/" className="text-2xl font-bold tracking-tight text-white">
-              Ashal
+            <Link to="/" aria-label="Ashal Home">
+              <AshalLogo variant="light" size="md" showTagline />
             </Link>
-            <p className="mt-3 max-w-xs text-sm leading-6 text-slate-400">
+            <p className="mt-4 max-w-xs text-sm leading-6 text-slate-400">
               Your multi-vendor marketplace for everything you need.
             </p>
             <div className="mt-5 flex items-center gap-3">

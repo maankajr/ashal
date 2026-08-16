@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../store/AuthContext";
 import { useCart } from "../store/CartContext";
+import AshalLogo from "./AshalLogo";
 
 const navLinkClass = ({ isActive }) =>
   `text-sm font-medium transition-colors ${
@@ -65,7 +66,7 @@ function AuthControls({ onNavigate, compact = false }) {
         className={`text-sm font-medium ${
           compact
             ? "text-teal-700 hover:text-teal-800"
-            : "rounded-lg bg-teal-700 px-3 py-2 text-white hover:bg-teal-800"
+            : "btn-primary py-2 px-3.5 text-xs"
         }`}
         onClick={onNavigate}
       >
@@ -86,10 +87,10 @@ function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-        <Link to="/" className="text-xl font-semibold tracking-tight text-slate-900">
-          Ashal
+        <Link to="/" className="flex items-center gap-2" aria-label="Ashal Home">
+          <AshalLogo size="sm" />
         </Link>
 
         <nav className="hidden items-center gap-6 md:flex">
