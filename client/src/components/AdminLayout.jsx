@@ -12,8 +12,10 @@ const links = [
   { to: "/admin/dashboard", label: "Dashboard", end: true },
   { to: "/admin/users", label: "Users" },
   { to: "/admin/stores", label: "Stores" },
+  { to: "/admin/categories", label: "Categories" },
   { to: "/admin/products", label: "Products" },
   { to: "/admin/orders", label: "Orders" },
+  { to: "/admin/contacts", label: "Contacts" },
 ];
 
 function AdminLayout() {

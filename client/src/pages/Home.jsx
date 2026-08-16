@@ -1,8 +1,9 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
-import { featuredProductIds, products } from "../data/products";
+import { listProducts, mapProductForCard } from "../api/products.js";
 
 const categories = [
   {
@@ -57,11 +58,38 @@ const categories = [
   },
 ];
 
-const featuredProducts = featuredProductIds
-  .map((id) => products.find((product) => product.id === id))
-  .filter(Boolean);
-
 function Home() {
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadFeatured() {
+      setLoading(true);
+      try {
+        const result = await listProducts({ sort: "rating", limit: 8 });
+        if (!cancelled) {
+          setFeaturedProducts((result.items || []).map(mapProductForCard));
+        }
+      } catch {
+        if (!cancelled) {
+          setFeaturedProducts([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadFeatured();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="flex min-h-svh flex-col bg-slate-50">
       <Navbar />
@@ -158,11 +186,47 @@ function Home() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              {featuredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            {loading ? (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                {[...Array(8)].map((_, index) => (
+                  <div
+                    key={index}
+                    className="animate-pulse overflow-hidden rounded-xl border border-slate-200 bg-white"
+                  >
+                    <div className="aspect-square bg-slate-200" />
+                    <div className="space-y-2 p-3">
+                      <div className="h-4 w-3/4 rounded bg-slate-200" />
+                      <div className="h-3 w-1/3 rounded bg-slate-200" />
+                      <div className="h-5 w-1/2 rounded bg-slate-200" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : featuredProducts.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 p-10 text-center">
+                <p className="text-base font-semibold text-slate-800">No featured products yet</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  Check back soon or explore all available items in our catalog.
+                </p>
+                <Link
+                  to="/shop"
+                  className="mt-4 inline-block rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800"
+                >
+                  Browse Shop
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                {featuredProducts.map((product) => (
+                  <ProductCard
+                    key={product.slug || product._id || product.id}
+                    product={product}
+                    showAddButton
+                    showWishlist
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </section>
       </main>

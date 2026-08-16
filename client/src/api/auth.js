@@ -46,3 +46,18 @@ export async function login(credentials) {
   const { data } = await axiosClient.post("/auth/login", credentials);
   return data.data;
 }
+
+export async function refresh() {
+  const { data } = await axiosClient.post("/auth/refresh");
+  return data.data;
+}
+
+export async function getMe() {
+  const { data } = await axiosClient.get("/auth/me");
+  return data.data;
+}
+
+export async function logout() {
+  const { data } = await axiosClient.post("/auth/logout");
+  return data.data;
+}

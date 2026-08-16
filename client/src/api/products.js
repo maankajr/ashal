@@ -10,6 +10,11 @@ export async function getProduct(slugOrId) {
   return data.data;
 }
 
+export async function getStoreDetails(slugOrId, params = {}) {
+  const { data } = await axiosClient.get(`/stores/${slugOrId}`, { params });
+  return data.data;
+}
+
 export function mapProductForCard(product) {
   return {
     id: product._id,

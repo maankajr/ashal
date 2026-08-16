@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { parseApiError } from "../../api/auth.js";
 import { listCategories } from "../../api/categories.js";
-import { createProduct, getVendorProduct, updateProduct } from "../../api/vendor.js";
+import {
+  createProduct,
+  getVendorProduct,
+  updateProduct,
+  uploadProductImages,
+} from "../../api/vendor.js";
 
 const emptyForm = {
   name: "",
@@ -12,6 +17,24 @@ const emptyForm = {
   categoryId: "",
 };
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
+
+function validateImageFile(file) {
+  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+    return "Only JPEG, PNG, WebP, and GIF images are allowed.";
+  }
+  if (file.size > MAX_IMAGE_BYTES) {
+    return "Each image must be 5MB or smaller.";
+  }
+  return "";
+}
+
 function VendorProductForm({ productId, mode = "create" }) {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -20,6 +43,7 @@ function VendorProductForm({ productId, mode = "create" }) {
   const [form, setForm] = useState(emptyForm);
   const [categories, setCategories] = useState([]);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
   const [loading, setLoading] = useState(isEdit);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -48,6 +72,7 @@ function VendorProductForm({ productId, mode = "create" }) {
         if (product.images?.[0]?.url) {
           setPhotoPreview(product.images[0].url);
         }
+        setPhotoFile(null);
       } catch (err) {
         if (!cancelled) setError(parseApiError(err).message);
       } finally {
@@ -78,12 +103,21 @@ function VendorProductForm({ productId, mode = "create" }) {
 
   function handlePhotoSelect(event) {
     const file = event.target.files?.[0];
+    event.target.value = "";
     if (!file) return;
+
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     if (photoPreview?.startsWith("blob:")) {
       URL.revokeObjectURL(photoPreview);
     }
+    setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
-    event.target.value = "";
+    setError("");
   }
 
   async function handleSubmit(event) {
@@ -97,18 +131,25 @@ function VendorProductForm({ productId, mode = "create" }) {
       price: Number(form.price),
       stock: Number(form.stock),
       categoryId: form.categoryId,
-      images: [],
     };
 
     try {
+      let product;
       if (isEdit) {
-        await updateProduct(productId, payload);
+        product = await updateProduct(productId, payload);
       } else {
-        await createProduct(payload);
+        product = await createProduct(payload);
       }
+
+      if (photoFile) {
+        await uploadProductImages(product._id, [photoFile], { replace: isEdit });
+      }
+
       navigate("/vendor/products");
     } catch (err) {
-      setError(parseApiError(err).message);
+      const parsed = parseApiError(err);
+      const detailMessage = Object.values(parsed.fieldErrors || {})[0];
+      setError(detailMessage || parsed.message);
     } finally {
       setSubmitting(false);
     }
@@ -164,7 +205,7 @@ function VendorProductForm({ productId, mode = "create" }) {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif"
               className="hidden"
               onChange={handlePhotoSelect}
             />
@@ -173,11 +214,16 @@ function VendorProductForm({ productId, mode = "create" }) {
               onClick={() => fileInputRef.current?.click()}
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
-              Upload image
+              {photoPreview ? "Change image" : "Upload image"}
             </button>
             <p className="max-w-[10rem] text-center text-[11px] leading-snug text-slate-500">
-              Image upload will be saved once image storage is connected.
+              JPEG, PNG, WebP, or GIF. Max 5MB.
             </p>
+            {photoFile && (
+              <p className="max-w-[10rem] truncate text-center text-[11px] text-teal-700">
+                {photoFile.name}
+              </p>
+            )}
           </div>
 
           <div className="space-y-4">

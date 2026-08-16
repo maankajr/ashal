@@ -35,6 +35,24 @@ export async function updateProduct(id, payload) {
   return data.data;
 }
 
+export async function uploadProductImages(id, files, { replace = false } = {}) {
+  const formData = new FormData();
+  const list = Array.isArray(files) ? files : [files];
+
+  for (const file of list) {
+    if (file) formData.append("images", file);
+  }
+
+  if (replace) {
+    formData.append("replace", "true");
+  }
+
+  const { data } = await axiosClient.post(`/vendor/products/${id}/images`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data.data;
+}
+
 export async function updateProductStock(id, stock) {
   const { data } = await axiosClient.patch(`/vendor/products/${id}/stock`, { stock });
   return data.data;
@@ -60,7 +78,15 @@ export async function getVendorDashboard() {
   return data.data;
 }
 
-export const VENDOR_STATUS_FLOW = ["Pending", "Confirmed", "Processing", "Shipped", "Delivered"];
+export const VENDOR_STATUS_FLOW = [
+  "Pending",
+  "Confirmed",
+  "Processing",
+  "Shipped",
+  "OutForDelivery",
+  "Delivered",
+  "Completed",
+];
 
 export function getNextVendorStatus(current) {
   const index = VENDOR_STATUS_FLOW.indexOf(current);

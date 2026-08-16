@@ -44,16 +44,31 @@ function VendorDashboard() {
   }
 
   if (error) {
+    if (error.toLowerCase().includes("store")) {
+      return (
+        <div className="max-w-xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-2xl">
+            🏪
+          </div>
+          <h2 className="mt-4 text-xl font-bold text-slate-900">Set up your vendor store</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Welcome to the vendor portal! Create your store name, description, and contact info to start listing products and receiving customer orders.
+          </p>
+          <div className="mt-6">
+            <Link
+              to="/vendor/store"
+              className="inline-flex items-center justify-center rounded-lg bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-800"
+            >
+              Set up your store →
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
         {error}
-        {error.includes("store") && (
-          <p className="mt-2">
-            <Link to="/vendor/store" className="font-medium text-teal-700 hover:text-teal-800">
-              Set up your store →
-            </Link>
-          </p>
-        )}
       </div>
     );
   }

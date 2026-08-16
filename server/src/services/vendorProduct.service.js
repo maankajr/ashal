@@ -2,6 +2,7 @@ import { Product } from "../models/Product.js";
 import { Category } from "../models/Category.js";
 import { AppError } from "../utils/AppError.js";
 import { uniqueSlug } from "../utils/slugify.js";
+import { uploadImageBuffers } from "../utils/imagekit.js";
 import { resolveVendorStore } from "../middleware/vendor.js";
 
 async function getVendorStore(user) {
@@ -212,4 +213,28 @@ export async function deleteVendorProduct(user, productId) {
   product.status = "deleted";
   await product.save();
   return product;
+}
+
+export async function uploadVendorProductImages(user, productId, files, { replace = false } = {}) {
+  if (!files?.length) {
+    throw new AppError("No images uploaded", {
+      status: 422,
+      code: "VALIDATION_ERROR",
+      details: [{ field: "images", message: "At least one image file is required" }],
+    });
+  }
+
+  const product = await getVendorProduct(user, productId);
+  const uploaded = await uploadImageBuffers(files, {
+    folder: `/ashal/products/${product._id}`,
+  });
+
+  if (replace) {
+    product.images = uploaded;
+  } else {
+    product.images = [...(product.images || []), ...uploaded];
+  }
+
+  await product.save();
+  return product.populate("categoryId", "name slug");
 }

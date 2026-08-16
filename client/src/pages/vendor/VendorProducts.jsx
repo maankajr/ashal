@@ -74,9 +74,24 @@ function VendorProducts() {
       />
 
       {error && (
-        <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-          {error}
-        </p>
+        error.toLowerCase().includes("store") ? (
+          <div className="mt-6 max-w-xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+            <h2 className="text-lg font-bold text-slate-900">Store Setup Required</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Please create your store profile first before managing products.
+            </p>
+            <Link
+              to="/vendor/store"
+              className="mt-4 inline-flex items-center rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800"
+            >
+              Set up your store →
+            </Link>
+          </div>
+        ) : (
+          <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            {error}
+          </p>
+        )
       )}
 
       {loading ? (

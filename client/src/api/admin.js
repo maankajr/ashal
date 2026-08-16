@@ -50,10 +50,46 @@ export async function updateSubOrderStatus(id, status) {
   return data.data;
 }
 
+export async function getAdminContacts(params = {}) {
+  const { data } = await axiosClient.get("/admin/contacts", { params });
+  return { items: data.data, meta: data.meta };
+}
+
+export async function getAdminContact(id) {
+  const { data } = await axiosClient.get(`/admin/contacts/${id}`);
+  return data.data;
+}
+
+export async function updateContactStatus(id, status) {
+  const { data } = await axiosClient.patch(`/admin/contacts/${id}/status`, { status });
+  return data.data;
+}
+
+export async function getAdminCategories(params = {}) {
+  const { data } = await axiosClient.get("/admin/categories", { params });
+  return { items: data.data, meta: data.meta };
+}
+
+export async function createAdminCategory(payload) {
+  const { data } = await axiosClient.post("/admin/categories", payload);
+  return data.data;
+}
+
+export async function updateAdminCategory(id, payload) {
+  const { data } = await axiosClient.patch(`/admin/categories/${id}`, payload);
+  return data.data;
+}
+
+export async function deleteAdminCategory(id) {
+  const { data } = await axiosClient.delete(`/admin/categories/${id}`);
+  return data.data;
+}
+
 export const STORE_STATUSES = ["pending", "active", "suspended", "rejected"];
 export const PRODUCT_STATUSES = ["pending", "active", "rejected", "deleted"];
 export const USER_STATUSES = ["active", "disabled"];
 export const USER_ROLES = ["customer", "vendor", "admin"];
+export const CONTACT_STATUSES = ["new", "read", "resolved"];
 export const SUBORDER_STATUSES = [
   "Pending",
   "Confirmed",

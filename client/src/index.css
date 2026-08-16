@@ -1,12 +1,134 @@
 @import "tailwindcss";
 
+@theme {
+  --color-ink: #0F1B2D;
+  --color-ink-soft: #4B5768;
+  --color-teal-900: #0B1F1B;
+  --color-teal-700: #0E6B5C;
+  --color-teal-500: #1F9C82;
+  --color-teal-200: #C9EBE1;
+  --color-amber-600: #C98A2E;
+  --color-amber-200: #F3DBA8;
+  --color-sand-50: #F6F3EC;
+  --color-white: #FFFFFF;
+  --color-danger: #C0392B;
+  --color-danger-bg: #FDEEEC;
+  --color-success: #1F9C82;
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+
+  --shadow-card: 0 1px 3px rgba(15, 27, 45, 0.06), 0 8px 24px rgba(15, 27, 45, 0.06);
+  --shadow-hover: 0 4px 10px rgba(15, 27, 45, 0.08), 0 12px 32px rgba(15, 27, 45, 0.10);
+}
+
+:root {
+  --color-ink: #0F1B2D;
+  --color-ink-soft: #4B5768;
+  --color-teal-900: #0B1F1B;
+  --color-teal-700: #0E6B5C;
+  --color-teal-500: #1F9C82;
+  --color-teal-200: #C9EBE1;
+  --color-amber-600: #C98A2E;
+  --color-amber-200: #F3DBA8;
+  --color-sand-50: #F6F3EC;
+  --color-white: #FFFFFF;
+  --color-danger: #C0392B;
+  --color-danger-bg: #FDEEEC;
+  --color-success: #1F9C82;
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+
+  --shadow-card: 0 1px 3px rgba(15, 27, 45, 0.06), 0 8px 24px rgba(15, 27, 45, 0.06);
+  --shadow-hover: 0 4px 10px rgba(15, 27, 45, 0.08), 0 12px 32px rgba(15, 27, 45, 0.10);
+}
+
 body {
   margin: 0;
   min-height: 100svh;
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--color-sand-50);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
 }
 
 #root {
   min-height: 100svh;
 }
+
+/* Headings use display serif */
+h1, h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* Component Foundations */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: var(--color-teal-700);
+  color: var(--color-white);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-weight: 600;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 2px rgba(15, 27, 45, 0.08);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-teal-500);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(14, 107, 92, 0.25);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.card-ashal {
+  background-color: var(--color-white);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(15, 27, 45, 0.05);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card-ashal:hover {
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+
+.panel-sand {
+  background-color: var(--color-sand-50);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(15, 27, 45, 0.06);
+}
+
+.banner-error {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(192, 57, 43, 0.15);
+}
+

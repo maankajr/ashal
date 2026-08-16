@@ -125,9 +125,9 @@ function Footer() {
             <h3 className={headingClass}>Customer Service</h3>
             <ul className="mt-4 space-y-3">
               <li>
-                <a href="#" className={linkClass}>
+                <Link to="/contact" className={linkClass}>
                   Contact Us
-                </a>
+                </Link>
               </li>
               <li>
                 <a href="#" className={linkClass}>

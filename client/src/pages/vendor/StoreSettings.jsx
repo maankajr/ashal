@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { parseApiError } from "../../api/auth.js";
 import { createStore, getMyStore, updateStore } from "../../api/vendor.js";
+import { useAuth } from "../../store/AuthContext";
 
 function StoreSettings() {
+  const { user, updateUser } = useAuth();
   const [store, setStore] = useState(null);
   const [form, setForm] = useState({
     name: "",
@@ -63,6 +65,9 @@ function StoreSettings() {
         ? await updateStore(form)
         : await createStore(form);
       setStore(result);
+      if (user && result?._id) {
+        updateUser({ ...user, storeId: result._id });
+      }
       setSaved(true);
     } catch (err) {
       setError(parseApiError(err).message);
@@ -94,6 +99,15 @@ function StoreSettings() {
         onSubmit={handleSubmit}
         className="mt-6 max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
       >
+        {!store && (
+          <div className="mb-6 rounded-xl border border-teal-200 bg-teal-50/70 p-4 text-sm text-teal-900">
+            <p className="font-semibold">👋 Welcome to Ashal Marketplace!</p>
+            <p className="mt-1 text-teal-800">
+              Complete your store profile below to activate your vendor storefront and start listing products.
+            </p>
+          </div>
+        )}
+
         {error && (
           <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
             {error}
@@ -102,12 +116,13 @@ function StoreSettings() {
 
         <div className="space-y-4">
           <label className="block text-sm font-medium text-slate-800">
-            Store name
+            Store name *
             <input
               name="name"
               value={form.name}
               onChange={handleChange}
               required
+              placeholder="e.g. Horizon Electronics, Nova Apparel"
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
             />
           </label>
@@ -118,6 +133,7 @@ function StoreSettings() {
               value={form.description}
               onChange={handleChange}
               rows={4}
+              placeholder="Describe your store and what you sell…"
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
             />
           </label>
@@ -128,6 +144,7 @@ function StoreSettings() {
               name="contactEmail"
               value={form.contactEmail}
               onChange={handleChange}
+              placeholder="support@yourstore.com"
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
             />
           </label>
@@ -137,6 +154,7 @@ function StoreSettings() {
               name="contactPhone"
               value={form.contactPhone}
               onChange={handleChange}
+              placeholder="+252 61 0000000"
               className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
             />
           </label>
@@ -157,7 +175,11 @@ function StoreSettings() {
           >
             {submitting ? "Saving…" : store ? "Save changes" : "Create store"}
           </button>
-          {saved && <p className="text-sm text-emerald-700">Store saved successfully.</p>}
+          {saved && (
+            <p className="text-sm font-medium text-emerald-700">
+              {store ? "Store profile updated successfully." : "Store created successfully!"}
+            </p>
+          )}
         </div>
       </form>
     </div>

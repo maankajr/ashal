@@ -39,3 +39,18 @@ export const deleteProduct = asyncHandler(async (req, res) => {
   const product = await vendorProductService.deleteVendorProduct(req.user, req.params.id);
   return success(res, product);
 });
+
+export const uploadProductImages = asyncHandler(async (req, res) => {
+  const replace =
+    req.body?.replace === true ||
+    req.body?.replace === "true" ||
+    req.body?.replace === "1";
+
+  const product = await vendorProductService.uploadVendorProductImages(
+    req.user,
+    req.params.id,
+    req.files || [],
+    { replace }
+  );
+  return success(res, product);
+});

@@ -8,13 +8,29 @@ function mapCartResponse(cart) {
   return cartApi.mapCartToItems(cart);
 }
 
+function toGuestCartItem(product, quantity) {
+  const productId = product._id || product.id;
+  return {
+    id: productId,
+    productId,
+    storeName: product.storeName || product.vendor || "Ashal Store",
+    productName: product.productName || product.name,
+    price: Number(product.price) || 0,
+    quantity,
+    image: product.image || "",
+  };
+}
+
 export function CartProvider({ children }) {
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, authReady, user } = useAuth();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const canUseServerCart =
+    isAuthenticated && (user?.role === "customer" || user?.role === "admin");
+
   const refreshCart = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!canUseServerCart) return;
     setLoading(true);
     try {
       const cart = await cartApi.getCart();
@@ -24,87 +40,101 @@ export function CartProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [canUseServerCart]);
 
   useEffect(() => {
-    if (isAuthenticated && token) {
+    if (!authReady) return;
+
+    if (canUseServerCart) {
       refreshCart();
+    } else if (!isAuthenticated) {
+      // Keep guest local cart across authReady flip when logged out
     } else {
+      // Vendor (or other non-customer roles): server cart is unavailable
       setCartItems([]);
     }
-  }, [isAuthenticated, token, refreshCart]);
+  }, [authReady, canUseServerCart, isAuthenticated, refreshCart]);
 
-  async function updateQuantity(itemId, newQuantity) {
-    const qty = Math.max(1, Number(newQuantity) || 1);
+  const updateQuantity = useCallback(
+    async (itemId, newQuantity) => {
+      const qty = Math.max(1, Number(newQuantity) || 1);
 
-    if (isAuthenticated) {
-      const cart = await cartApi.updateCartItem(itemId, qty);
-      setCartItems(mapCartResponse(cart));
-      return;
-    }
-
-    setCartItems((prevItems) =>
-      prevItems.map((item) =>
-        String(item.id) === String(itemId) ? { ...item, quantity: qty } : item
-      )
-    );
-  }
-
-  async function removeItem(itemId) {
-    if (isAuthenticated) {
-      const cart = await cartApi.removeCartItem(itemId);
-      setCartItems(mapCartResponse(cart));
-      return;
-    }
-
-    setCartItems((prevItems) => prevItems.filter((item) => String(item.id) !== String(itemId)));
-  }
-
-  async function addItem(product, quantity = 1) {
-    const amount = Math.max(1, Number(quantity) || 1);
-    const productId = product._id || product.id;
-
-    if (isAuthenticated) {
-      const cart = await cartApi.addCartItem(productId, amount);
-      setCartItems(mapCartResponse(cart));
-      return;
-    }
-
-    setCartItems((prevItems) => {
-      const existing = prevItems.find((item) => String(item.id) === String(productId));
-
-      if (existing) {
-        return prevItems.map((item) =>
-          String(item.id) === String(productId)
-            ? { ...item, quantity: item.quantity + amount }
-            : item
-        );
+      if (canUseServerCart) {
+        const cart = await cartApi.updateCartItem(itemId, qty);
+        setCartItems(mapCartResponse(cart));
+        return;
       }
 
-      return [
-        ...prevItems,
-        {
-          id: productId,
-          productId,
-          storeName: product.storeName || product.vendor || "Ashal Store",
-          productName: product.productName || product.name,
-          price: product.price,
-          quantity: amount,
-          image: product.image,
-        },
-      ];
-    });
-  }
+      setCartItems((prevItems) =>
+        prevItems.map((item) =>
+          String(item.id) === String(itemId) ? { ...item, quantity: qty } : item
+        )
+      );
+    },
+    [canUseServerCart]
+  );
 
-  async function clearCartItems() {
-    if (isAuthenticated) {
+  const removeItem = useCallback(
+    async (itemId) => {
+      if (canUseServerCart) {
+        const cart = await cartApi.removeCartItem(itemId);
+        setCartItems(mapCartResponse(cart));
+        return;
+      }
+
+      setCartItems((prevItems) => prevItems.filter((item) => String(item.id) !== String(itemId)));
+    },
+    [canUseServerCart]
+  );
+
+  const addItem = useCallback(
+    async (product, quantity = 1) => {
+      const amount = Math.max(1, Number(quantity) || 1);
+      const productId = product?._id || product?.id;
+
+      if (!productId) {
+        throw new Error("Missing product id");
+      }
+
+      if (isAuthenticated && user?.role === "vendor") {
+        const error = new Error("Sign in as a customer to add items to your cart.");
+        error.code = "VENDOR_CART_FORBIDDEN";
+        throw error;
+      }
+
+      if (canUseServerCart) {
+        const cart = await cartApi.addCartItem(productId, amount);
+        setCartItems(mapCartResponse(cart));
+        return;
+      }
+
+      // Guest (or not yet ready): keep a local cart
+      setCartItems((prevItems) => {
+        const existing = prevItems.find((item) => String(item.id) === String(productId));
+
+        if (existing) {
+          return prevItems.map((item) =>
+            String(item.id) === String(productId)
+              ? { ...item, quantity: item.quantity + amount }
+              : item
+          );
+        }
+
+        return [...prevItems, toGuestCartItem(product, amount)];
+      });
+    },
+    [canUseServerCart, isAuthenticated, user?.role]
+  );
+
+  const clearCartItems = useCallback(async () => {
+    if (canUseServerCart) {
       const cart = await cartApi.clearCart();
       setCartItems(mapCartResponse(cart));
       return;
     }
 
     setCartItems([]);
-  }
+  }, [canUseServerCart]);
 
   const cartCount = useMemo(
     () => cartItems.reduce((sum, item) => sum + item.quantity, 0),
@@ -122,7 +152,7 @@ export function CartProvider({ children }) {
       clearCartItems,
       refreshCart,
     }),
-    [cartItems, cartCount, loading, refreshCart]
+    [cartItems, cartCount, loading, updateQuantity, removeItem, addItem, clearCartItems, refreshCart]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

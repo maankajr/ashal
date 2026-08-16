@@ -4,36 +4,36 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import ProductCard, { StarRating } from "../components/ProductCard";
+import { parseApiError } from "../api/auth.js";
 import { getProduct, listProducts, mapProductForCard } from "../api/products.js";
+import {
+  createReview,
+  deleteReview,
+  getReviewEligibility,
+  listProductReviews,
+  updateReview,
+} from "../api/reviews.js";
 import { useAuth } from "../store/AuthContext";
 import { useCart } from "../store/CartContext";
 import { useWishlist } from "../store/WishlistContext";
 
-const reviews = [
-  {
-    id: 1,
-    name: "Amina K.",
-    rating: 5,
-    comment: "Beautiful quality and arrived well packed. I use it every day.",
-  },
-  {
-    id: 2,
-    name: "Jamal R.",
-    rating: 4,
-    comment: "Looks even better in person. Shipping took a couple of extra days.",
-  },
-  {
-    id: 3,
-    name: "Sara M.",
-    rating: 5,
-    comment: "Gifted this and it was a hit. Would buy from this store again.",
-  },
-];
+function formatReviewDate(value) {
+  if (!value) return "";
+  try {
+    return new Date(value).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return "";
+  }
+}
 
 function ProductDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authReady, user } = useAuth();
   const { addItem } = useCart();
   const { isInWishlist, toggleItem } = useWishlist();
 
@@ -43,6 +43,55 @@ function ProductDetails() {
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [cartError, setCartError] = useState("");
+  const [cartBusy, setCartBusy] = useState(false);
+
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [eligibility, setEligibility] = useState(null);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
+  const [editingId, setEditingId] = useState(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewError, setReviewError] = useState("");
+  const [reviewSuccess, setReviewSuccess] = useState("");
+
+  const productKey = product?.slug || id;
+
+  async function loadReviews(slugOrId) {
+    setReviewsLoading(true);
+    try {
+      const result = await listProductReviews(slugOrId, { limit: 50 });
+      setReviews(result.items || []);
+    } catch {
+      setReviews([]);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }
+
+  async function loadEligibility(slugOrId) {
+    if (!isAuthenticated || user?.role !== "customer") {
+      setEligibility(null);
+      return;
+    }
+
+    try {
+      const result = await getReviewEligibility(slugOrId);
+      setEligibility(result);
+      if (result.existingReview) {
+        setEditingId(result.existingReview._id);
+        setReviewForm({
+          rating: result.existingReview.rating,
+          comment: result.existingReview.comment || "",
+        });
+      } else {
+        setEditingId(null);
+        setReviewForm({ rating: 5, comment: "" });
+      }
+    } catch {
+      setEligibility(null);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -68,10 +117,13 @@ function ProductDetails() {
             )
             .slice(0, 4)
         );
+
+        await loadReviews(mapped.slug || id);
       } catch {
         if (!cancelled) {
           setProduct(null);
           setRelatedProducts([]);
+          setReviews([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -86,9 +138,17 @@ function ProductDetails() {
   }, [id]);
 
   useEffect(() => {
+    if (!authReady || !productKey) return;
+    loadEligibility(productKey);
+  }, [authReady, isAuthenticated, user?.role, productKey]);
+
+  useEffect(() => {
     setActiveImage(0);
     setQuantity(1);
     setAdded(false);
+    setCartError("");
+    setReviewError("");
+    setReviewSuccess("");
   }, [id]);
 
   const images = useMemo(() => {
@@ -99,6 +159,12 @@ function ProductDetails() {
       product.image.includes("?") ? `${product.image}&sat=-20` : product.image,
     ];
   }, [product]);
+
+  const averageRating = useMemo(() => {
+    if (!reviews.length) return product?.rating || 0;
+    const total = reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0);
+    return Math.round((total / reviews.length) * 10) / 10;
+  }, [reviews, product?.rating]);
 
   if (loading) {
     return (
@@ -136,18 +202,106 @@ function ProductDetails() {
 
   const inStock = product.stock > 0;
   const saved = isInWishlist(product.id);
+  const canShowForm =
+    isAuthenticated &&
+    user?.role === "customer" &&
+    eligibility &&
+    (eligibility.canReview || eligibility.existingReview);
 
   async function handleWishlistToggle() {
     if (!isAuthenticated) {
       navigate("/login");
       return;
     }
-    await toggleItem(product.id);
+    if (user?.role === "vendor") {
+      return;
+    }
+    try {
+      await toggleItem(product.id);
+    } catch {
+      // Heart state updates only on success
+    }
   }
 
-  function addToCart() {
-    addItem(product, quantity);
-    setAdded(true);
+  async function addToCart() {
+    setCartError("");
+    setCartBusy(true);
+    try {
+      await addItem(product, quantity);
+      setAdded(true);
+    } catch (error) {
+      setAdded(false);
+      if (error?.code === "VENDOR_CART_FORBIDDEN") {
+        setCartError(error.message);
+      } else {
+        const parsed = parseApiError(error);
+        const detail = Object.values(parsed.fieldErrors || {})[0];
+        setCartError(detail || parsed.message || "Could not add to cart.");
+      }
+    } finally {
+      setCartBusy(false);
+    }
+  }
+
+  async function handleReviewSubmit(event) {
+    event.preventDefault();
+    setReviewError("");
+    setReviewSuccess("");
+    setReviewBusy(true);
+
+    try {
+      if (editingId) {
+        await updateReview(editingId, {
+          rating: Number(reviewForm.rating),
+          comment: reviewForm.comment.trim(),
+        });
+        setReviewSuccess("Your review was updated.");
+      } else {
+        await createReview(productKey, {
+          rating: Number(reviewForm.rating),
+          comment: reviewForm.comment.trim(),
+        });
+        setReviewSuccess("Thanks — your review was posted.");
+      }
+
+      await Promise.all([loadReviews(productKey), loadEligibility(productKey)]);
+
+      const fresh = await getProduct(productKey);
+      setProduct(mapProductForCard(fresh));
+    } catch (error) {
+      setReviewError(parseApiError(error).message || "Could not save review.");
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function handleDeleteReview(reviewId) {
+    setReviewError("");
+    setReviewSuccess("");
+    setReviewBusy(true);
+    try {
+      await deleteReview(reviewId);
+      setReviewSuccess("Your review was deleted.");
+      setEditingId(null);
+      setReviewForm({ rating: 5, comment: "" });
+      await Promise.all([loadReviews(productKey), loadEligibility(productKey)]);
+      const fresh = await getProduct(productKey);
+      setProduct(mapProductForCard(fresh));
+    } catch (error) {
+      setReviewError(parseApiError(error).message || "Could not delete review.");
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  function startEdit(review) {
+    setEditingId(review._id);
+    setReviewForm({
+      rating: review.rating,
+      comment: review.comment || "",
+    });
+    setReviewError("");
+    setReviewSuccess("");
   }
 
   return (
@@ -207,11 +361,14 @@ function ProductDetails() {
                 />
               </button>
             </div>
-            <div className="mt-2">
-              <StarRating rating={product.rating} />
+            <div className="mt-2 flex items-center gap-2">
+              <StarRating rating={averageRating} />
+              <span className="text-xs text-slate-500">
+                {reviews.length} review{reviews.length === 1 ? "" : "s"}
+              </span>
             </div>
             <p className="mt-4 text-2xl font-semibold text-teal-800">
-              ${product.price.toFixed(2)}
+              ${Number(product.price || 0).toFixed(2)}
             </p>
             <p className="mt-3 text-sm leading-6 text-slate-600">{product.description}</p>
             <p
@@ -219,9 +376,7 @@ function ProductDetails() {
                 inStock ? "text-emerald-700" : "text-rose-700"
               }`}
             >
-              {inStock
-                ? `In stock (${product.stock} available)`
-                : "Out of stock"}
+              {inStock ? `In stock (${product.stock} available)` : "Out of stock"}
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -238,9 +393,7 @@ function ProductDetails() {
                 <button
                   type="button"
                   className="px-3 py-2 text-slate-700"
-                  onClick={() =>
-                    setQuantity((value) => Math.min(product.stock, value + 1))
-                  }
+                  onClick={() => setQuantity((value) => Math.min(product.stock, value + 1))}
                   aria-label="Increase quantity"
                 >
                   +
@@ -248,14 +401,15 @@ function ProductDetails() {
               </div>
               <button
                 type="button"
-                disabled={!inStock}
+                disabled={!inStock || cartBusy}
                 onClick={addToCart}
                 className="rounded-lg bg-teal-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-40"
               >
-                Add to Cart
+                {cartBusy ? "Adding…" : "Add to Cart"}
               </button>
             </div>
-            {added && (
+            {cartError && <p className="mt-3 text-sm text-rose-700">{cartError}</p>}
+            {added && !cartError && (
               <p className="mt-3 text-sm text-emerald-700">
                 Added {quantity} item{quantity === 1 ? "" : "s"} to cart.
               </p>
@@ -265,19 +419,136 @@ function ProductDetails() {
 
         <section className="mt-12">
           <h2 className="text-xl font-semibold text-slate-900">Reviews</h2>
-          <div className="mt-4 space-y-4">
-            {reviews.map((review) => (
-              <article
-                key={review.id}
-                className="rounded-xl border border-slate-200 bg-white p-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium text-slate-900">{review.name}</p>
-                  <StarRating rating={review.rating} />
-                </div>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{review.comment}</p>
-              </article>
-            ))}
+          <p className="mt-1 text-sm text-slate-600">
+            Verified buyers can leave a review after their order is delivered.
+          </p>
+
+          {canShowForm && (
+            <form
+              onSubmit={handleReviewSubmit}
+              className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+            >
+              <h3 className="text-sm font-semibold text-slate-900">
+                {editingId ? "Edit your review" : "Write a review"}
+              </h3>
+              <label className="mt-4 block text-sm font-medium text-slate-800">
+                Rating
+                <select
+                  value={reviewForm.rating}
+                  onChange={(event) =>
+                    setReviewForm((current) => ({
+                      ...current,
+                      rating: Number(event.target.value),
+                    }))
+                  }
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
+                >
+                  {[5, 4, 3, 2, 1].map((value) => (
+                    <option key={value} value={value}>
+                      {value} star{value === 1 ? "" : "s"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="mt-3 block text-sm font-medium text-slate-800">
+                Comment
+                <textarea
+                  value={reviewForm.comment}
+                  onChange={(event) =>
+                    setReviewForm((current) => ({
+                      ...current,
+                      comment: event.target.value,
+                    }))
+                  }
+                  rows={4}
+                  minLength={5}
+                  maxLength={1000}
+                  required
+                  placeholder="Share what you liked or what could be better (min 5 characters)"
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
+                />
+              </label>
+              {reviewError && <p className="mt-3 text-sm text-rose-700">{reviewError}</p>}
+              {reviewSuccess && <p className="mt-3 text-sm text-emerald-700">{reviewSuccess}</p>}
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="submit"
+                  disabled={reviewBusy}
+                  className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
+                >
+                  {reviewBusy ? "Saving…" : editingId ? "Update review" : "Submit review"}
+                </button>
+                {editingId && (
+                  <button
+                    type="button"
+                    disabled={reviewBusy}
+                    onClick={() => handleDeleteReview(editingId)}
+                    className="rounded-lg border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </form>
+          )}
+
+          {isAuthenticated &&
+            user?.role === "customer" &&
+            eligibility &&
+            !eligibility.hasPurchased && (
+              <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                Buy and receive this product to leave a review.
+              </p>
+            )}
+
+          {!isAuthenticated && (
+            <p className="mt-4 text-sm text-slate-600">
+              <Link to="/login" className="font-medium text-teal-700 hover:text-teal-800">
+                Sign in
+              </Link>{" "}
+              as a customer who received this product to write a review.
+            </p>
+          )}
+
+          <div className="mt-6 space-y-4">
+            {reviewsLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="h-24 animate-pulse rounded-xl bg-slate-200" />
+                ))}
+              </div>
+            ) : reviews.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
+                No reviews yet. Be the first after your order is delivered.
+              </p>
+            ) : (
+              reviews.map((review) => (
+                <article
+                  key={review._id}
+                  className="rounded-xl border border-slate-200 bg-white p-4"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">
+                        {review.user?.name || "Customer"}
+                      </p>
+                      <p className="text-xs text-slate-500">{formatReviewDate(review.createdAt)}</p>
+                    </div>
+                    <StarRating rating={review.rating} />
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{review.comment}</p>
+                  {review.isOwner && (
+                    <button
+                      type="button"
+                      onClick={() => startEdit(review)}
+                      className="mt-3 text-xs font-medium text-teal-700 hover:text-teal-800"
+                    >
+                      Edit your review
+                    </button>
+                  )}
+                </article>
+              ))
+            )}
           </div>
         </section>
 

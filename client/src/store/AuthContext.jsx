@@ -1,77 +1,94 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import * as authApi from "../api/auth.js";
+import { setUnauthorizedHandler } from "../api/axiosClient.js";
 
 const AuthContext = createContext(null);
 
-const TOKEN_KEY = "ashal_token";
-const USER_KEY = "ashal_user";
-
-function readStoredUser() {
-  try {
-    const stored = localStorage.getItem(USER_KEY);
-    return stored ? JSON.parse(stored) : null;
-  } catch {
-    return null;
-  }
-}
-
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(readStoredUser);
-  const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
 
-  function persistAuth(nextToken, nextUser) {
-    setToken(nextToken);
-    setUser(nextUser);
-    localStorage.setItem(TOKEN_KEY, nextToken);
-    localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
-  }
+  const clearAuth = useCallback(() => {
+    setUser(null);
+  }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      clearAuth();
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [clearAuth]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function bootstrap() {
+      try {
+        const meResult = await authApi.getMe();
+        if (!cancelled) setUser(meResult.user);
+      } catch {
+        try {
+          const refreshResult = await authApi.refresh();
+          if (!cancelled) setUser(refreshResult.user);
+        } catch {
+          if (!cancelled) setUser(null);
+        }
+      } finally {
+        if (!cancelled) setAuthReady(true);
+      }
+    }
+
+    bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function updateUser(nextUser) {
     setUser(nextUser);
-    localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
-  }
-
-  function clearAuth() {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
   }
 
   async function login(credentials) {
     const result = await authApi.login(credentials);
-    persistAuth(result.token, result.user);
+    setUser(result.user);
     return result;
   }
 
   async function register(userData) {
     const result = await authApi.register(userData);
-    persistAuth(result.token, result.user);
+    setUser(result.user);
     return result;
   }
 
   async function registerVendor(userData) {
     const result = await authApi.registerVendor(userData);
-    persistAuth(result.token, result.user);
+    setUser(result.user);
     return result;
   }
 
-  function logout() {
-    clearAuth();
+  async function logout() {
+    try {
+      await authApi.logout();
+    } catch {
+      // Still clear local session if the network call fails.
+    } finally {
+      clearAuth();
+    }
   }
 
   const value = useMemo(
     () => ({
       user,
-      token,
-      isAuthenticated: Boolean(token && user),
+      authReady,
+      isAuthenticated: Boolean(user),
       login,
       register,
       registerVendor,
       logout,
       updateUser,
     }),
-    [user, token]
+    [user, authReady]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

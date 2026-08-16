@@ -91,26 +91,42 @@ function Checkout() {
     return <Navigate to="/login" replace />;
   }
 
+  const [addressFormError, setAddressFormError] = useState("");
+
   function addNewAddress(event) {
     event.preventDefault();
-    if (
-      !newAddress.label.trim() ||
-      !newAddress.line1.trim() ||
-      !newAddress.city.trim() ||
-      !newAddress.country.trim()
-    ) {
+    setAddressFormError("");
+
+    const line1 = newAddress.line1.trim();
+    const city = newAddress.city.trim();
+    const country = newAddress.country.trim();
+    const label = newAddress.label.trim() || "Home";
+    const phone = newAddress.phone.trim();
+    const line2 = newAddress.line2?.trim() || "";
+    const region = newAddress.region?.trim() || "";
+
+    if (!line1 || !city || !country) {
+      setAddressFormError("Please fill in address line 1, city, and country.");
       return;
     }
 
-    const tempId = `temp-${Date.now()}`;
+    const tempId = `addr-${Date.now()}`;
     const address = {
       _id: tempId,
-      ...newAddress,
+      label,
+      line1,
+      line2,
+      city,
+      region,
+      country,
+      phone,
       isDefault: addresses.length === 0,
     };
+
     setAddresses((current) => [...current, address]);
     setSelectedAddressId(tempId);
     setNewAddress(emptyAddressDraft);
+    setAddressFormError("");
     setShowNewAddress(false);
   }
 
@@ -259,45 +275,78 @@ function Checkout() {
                   {showNewAddress ? "Hide new address form" : "Add new address"}
                 </button>
                 {showNewAddress && (
-                  <form onSubmit={addNewAddress} className="mt-4 space-y-3">
+                  <form onSubmit={addNewAddress} className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-slate-50/50 p-4">
+                    <h3 className="text-sm font-semibold text-slate-800">New Shipping Address</h3>
+                    {addressFormError && (
+                      <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">
+                        {addressFormError}
+                      </p>
+                    )}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <input
+                        placeholder="Label (e.g. Home, Office)"
+                        value={newAddress.label}
+                        onChange={(event) =>
+                          setNewAddress((current) => ({ ...current, label: event.target.value }))
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
+                      />
+                      <input
+                        placeholder="Phone Number (for delivery)"
+                        value={newAddress.phone}
+                        onChange={(event) =>
+                          setNewAddress((current) => ({ ...current, phone: event.target.value }))
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
+                      />
+                    </div>
                     <input
-                      placeholder="Label"
-                      value={newAddress.label}
-                      onChange={(event) =>
-                        setNewAddress((current) => ({ ...current, label: event.target.value }))
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
-                    />
-                    <input
-                      placeholder="Address line 1"
+                      placeholder="Street Address (Line 1) *"
+                      required
                       value={newAddress.line1}
                       onChange={(event) =>
                         setNewAddress((current) => ({ ...current, line1: event.target.value }))
                       }
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
                     />
-                    <input
-                      placeholder="City"
-                      value={newAddress.city}
-                      onChange={(event) =>
-                        setNewAddress((current) => ({ ...current, city: event.target.value }))
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
-                    />
-                    <input
-                      placeholder="Country"
-                      value={newAddress.country}
-                      onChange={(event) =>
-                        setNewAddress((current) => ({ ...current, country: event.target.value }))
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
-                    />
-                    <button
-                      type="submit"
-                      className="rounded-lg bg-teal-700 px-4 py-2 text-sm font-semibold text-white"
-                    >
-                      Use this address
-                    </button>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <input
+                        placeholder="City *"
+                        required
+                        value={newAddress.city}
+                        onChange={(event) =>
+                          setNewAddress((current) => ({ ...current, city: event.target.value }))
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
+                      />
+                      <input
+                        placeholder="Country *"
+                        required
+                        value={newAddress.country}
+                        onChange={(event) =>
+                          setNewAddress((current) => ({ ...current, country: event.target.value }))
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-teal-600 focus:ring-2"
+                      />
+                    </div>
+                    <div className="flex items-center gap-3 pt-2">
+                      <button
+                        type="submit"
+                        className="btn-primary py-2 px-4 text-xs font-semibold"
+                      >
+                        Use this address
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowNewAddress(false);
+                          setAddressFormError("");
+                        }}
+                        className="text-xs font-medium text-slate-500 hover:text-slate-700"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </form>
                 )}
               </section>

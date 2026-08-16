@@ -22,14 +22,41 @@ function WishlistSkeleton() {
 }
 
 function Wishlist() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, authReady, user } = useAuth();
   const { wishlistItems, wishlistLoading, removeItem, moveItemToCart } = useWishlist();
   const [movedId, setMovedId] = useState(null);
   const [actionError, setActionError] = useState("");
   const [busyId, setBusyId] = useState(null);
 
+  if (!authReady) {
+    return (
+      <div className="flex min-h-svh flex-col bg-slate-50">
+        <Navbar />
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+          <WishlistSkeleton />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (user?.role === "vendor") {
+    return (
+      <div className="flex min-h-svh flex-col bg-slate-50">
+        <Navbar />
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Wishlist</h1>
+          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Wishlists are for customer accounts. Sign in as a customer to save products.
+          </p>
+        </main>
+        <Footer />
+      </div>
+    );
   }
 
   async function handleRemove(productId) {

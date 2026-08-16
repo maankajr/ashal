@@ -7,7 +7,7 @@ import { useCart } from "./CartContext.jsx";
 const WishlistContext = createContext(null);
 
 export function WishlistProvider({ children }) {
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, authReady, user } = useAuth();
   const { refreshCart } = useCart();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -18,7 +18,7 @@ export function WishlistProvider({ children }) {
   );
 
   const refreshWishlist = useCallback(async () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || user?.role === "vendor") {
       setItems([]);
       return;
     }
@@ -32,15 +32,17 @@ export function WishlistProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.role]);
 
   useEffect(() => {
-    if (isAuthenticated && token) {
+    if (!authReady) return;
+
+    if (isAuthenticated && user?.role !== "vendor") {
       refreshWishlist();
     } else {
       setItems([]);
     }
-  }, [isAuthenticated, token, refreshWishlist]);
+  }, [authReady, isAuthenticated, user?.role, refreshWishlist]);
 
   function isInWishlist(productId) {
     return productIds.has(String(productId));

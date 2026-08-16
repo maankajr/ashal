@@ -103,7 +103,15 @@ export async function addCartItem(userId, { productId, quantity = 1 }) {
     throw new AppError("Insufficient stock", {
       status: 400,
       code: "OUT_OF_STOCK",
-      details: [{ field: "quantity", message: `Only ${product.stock} in stock` }],
+      details: [
+        {
+          field: "quantity",
+          message:
+            product.stock <= 0
+              ? "This product is out of stock"
+              : `Only ${product.stock} left in stock`,
+        },
+      ],
     });
   }
 
@@ -115,10 +123,19 @@ export async function addCartItem(userId, { productId, quantity = 1 }) {
   if (existing) {
     const nextQty = existing.quantity + qty;
     if (product.stock < nextQty) {
+      const remaining = Math.max(0, product.stock - existing.quantity);
       throw new AppError("Insufficient stock", {
         status: 400,
         code: "OUT_OF_STOCK",
-        details: [{ field: "quantity", message: `Only ${product.stock} in stock` }],
+        details: [
+          {
+            field: "quantity",
+            message:
+              remaining <= 0
+                ? `You already have the maximum available (${product.stock}) in your cart`
+                : `Only ${remaining} more can be added (${product.stock} in stock, ${existing.quantity} already in cart)`,
+          },
+        ],
       });
     }
     existing.quantity = nextQty;

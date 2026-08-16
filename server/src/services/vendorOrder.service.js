@@ -2,14 +2,29 @@ import { SubOrder, SUBORDER_STATUSES } from "../models/SubOrder.js";
 import { AppError } from "../utils/AppError.js";
 import { resolveVendorStore } from "../middleware/vendor.js";
 
-const FORWARD_STATUS_FLOW = ["Pending", "Confirmed", "Processing", "Shipped", "Delivered"];
+const FORWARD_STATUS_FLOW = [
+  "Pending",
+  "Confirmed",
+  "Processing",
+  "Shipped",
+  "OutForDelivery",
+  "Delivered",
+  "Completed",
+];
 
 export function getNextStatuses(currentStatus) {
-  const index = FORWARD_STATUS_FLOW.indexOf(currentStatus);
-  if (index === -1 || index === FORWARD_STATUS_FLOW.length - 1) {
+  if (currentStatus === "Cancelled" || currentStatus === "Rejected" || currentStatus === "Completed") {
     return [];
   }
-  return [FORWARD_STATUS_FLOW[index + 1]];
+  const index = FORWARD_STATUS_FLOW.indexOf(currentStatus);
+  const next = [];
+  if (index !== -1 && index < FORWARD_STATUS_FLOW.length - 1) {
+    next.push(FORWARD_STATUS_FLOW[index + 1]);
+  }
+  if (["Pending", "Confirmed"].includes(currentStatus)) {
+    next.push("Cancelled");
+  }
+  return next;
 }
 
 export async function listVendorOrders(user) {

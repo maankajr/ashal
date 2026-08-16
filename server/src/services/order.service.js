@@ -1,10 +1,13 @@
 import mongoose from "mongoose";
-import { Cart } from "../models/Cart.js";
-import { Product } from "../models/Product.js";
 import { Order } from "../models/Order.js";
 import { SubOrder } from "../models/SubOrder.js";
+import { Product } from "../models/Product.js";
+import { Store } from "../models/Store.js";
+import { Cart } from "../models/Cart.js";
+import { User } from "../models/User.js";
 import { AppError } from "../utils/AppError.js";
 import { buildPaginationMeta, getPagination } from "../utils/pagination.js";
+import { sendOrderConfirmationEmail, sendVendorNewOrderEmail } from "../utils/email.js";
 
 function deriveOrderStatus(subOrders = []) {
   if (!subOrders.length) return "Pending";
@@ -142,15 +145,55 @@ export async function checkout(userId, { shippingAddress, paymentMethod }) {
 
     await session.commitTransaction();
 
+    // Send emails asynchronously after commit — never blocks or rolls back checkout
+    sendPostCheckoutEmails({ userId, order, subOrders });
+
     return {
       order,
       subOrders,
     };
   } catch (error) {
-    await session.abortTransaction();
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
     throw error;
   } finally {
     session.endSession();
+  }
+}
+
+async function sendPostCheckoutEmails({ userId, order, subOrders = [] }) {
+  try {
+    const customer = await User.findById(userId).lean();
+    if (customer?.email) {
+      await sendOrderConfirmationEmail({
+        customerEmail: customer.email,
+        customerName: customer.name,
+        order,
+        subOrders,
+      });
+    }
+
+    const storeIds = [...new Set(subOrders.map((s) => s.storeId))];
+    const stores = await Store.find({ _id: { $in: storeIds } })
+      .populate("vendorId", "name email")
+      .lean();
+
+    const storeMap = new Map(stores.map((s) => [s._id.toString(), s]));
+
+    for (const subOrder of subOrders) {
+      const store = storeMap.get(subOrder.storeId.toString());
+      if (store?.vendorId?.email) {
+        await sendVendorNewOrderEmail({
+          vendorEmail: store.vendorId.email,
+          vendorName: store.vendorId.name,
+          storeName: store.name,
+          subOrder,
+        });
+      }
+    }
+  } catch (err) {
+    console.error("[Email] Post-checkout email notification failed:", err.message);
   }
 }
 

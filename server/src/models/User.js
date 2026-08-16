@@ -43,6 +43,16 @@ const userSchema = new mongoose.Schema(
       ref: "Store",
       default: null,
     },
+    refreshTokenHash: {
+      type: String,
+      select: false,
+      default: null,
+    },
+    refreshTokenExpiresAt: {
+      type: Date,
+      select: false,
+      default: null,
+    },
   },
   { timestamps: true }
 );

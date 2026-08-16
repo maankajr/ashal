@@ -14,6 +14,9 @@ export const statusStyles = {
   disabled: "bg-rose-100 text-rose-800",
   suspended: "bg-amber-100 text-amber-800",
   deleted: "bg-slate-200 text-slate-600",
+  new: "bg-amber-100 text-amber-800",
+  read: "bg-sky-100 text-sky-800",
+  resolved: "bg-emerald-100 text-emerald-800",
 };
 
 export const orderTimeline = [

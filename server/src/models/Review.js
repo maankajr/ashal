@@ -15,7 +15,12 @@ const reviewSchema = new mongoose.Schema(
       index: true,
     },
     rating: { type: Number, required: true, min: 1, max: 5 },
-    comment: { type: String, default: "" },
+    comment: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 1000,
+    },
     status: {
       type: String,
       enum: ["visible", "hidden"],
