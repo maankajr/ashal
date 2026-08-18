@@ -274,3 +274,73 @@ export async function getCurrentUser(userId) {
   }
   return sanitizeUser(user);
 }
+
+export async function forgotPassword(email) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await User.findOne({ email: normalizedEmail });
+
+  // Always respond with success to avoid user enumeration
+  if (!user || user.status !== "active") return;
+
+  const { sendPasswordResetEmail } = await import("../utils/email.js");
+
+  // Generate a secure random token (raw = sent in email, hash = stored in DB)
+  const crypto = (await import("crypto")).default;
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+  user.passwordResetToken = tokenHash;
+  user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+  await user.save({ validateBeforeSave: false });
+
+  const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+  const resetUrl = `${clientUrl}/reset-password?token=${rawToken}&email=${encodeURIComponent(user.email)}`;
+
+  await sendPasswordResetEmail({ email: user.email, name: user.name, resetUrl });
+}
+
+export async function resetPassword({ email, token, password }) {
+  if (!email || !token || !password) {
+    throw new AppError("Email, token and new password are required", {
+      status: 400,
+      code: "BAD_REQUEST",
+    });
+  }
+
+  if (String(password).length < 8) {
+    throw new AppError("Validation failed", {
+      status: 422,
+      code: "VALIDATION_ERROR",
+      details: [{ field: "password", message: "Password must be at least 8 characters" }],
+    });
+  }
+
+  const crypto = (await import("crypto")).default;
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+  const user = await User.findOne({
+    email: email.trim().toLowerCase(),
+  }).select("+passwordResetToken +passwordResetExpires +passwordHash");
+
+  if (
+    !user ||
+    !user.passwordResetToken ||
+    user.passwordResetToken !== tokenHash ||
+    !user.passwordResetExpires ||
+    user.passwordResetExpires.getTime() < Date.now()
+  ) {
+    throw new AppError("Reset link is invalid or has expired", {
+      status: 400,
+      code: "BAD_REQUEST",
+    });
+  }
+
+  user.passwordHash = await bcrypt.hash(password, 10);
+  user.passwordResetToken = null;
+  user.passwordResetExpires = null;
+  // Also invalidate any active refresh session for security
+  user.refreshTokenHash = null;
+  user.refreshTokenExpiresAt = null;
+  await user.save({ validateBeforeSave: false });
+}
+

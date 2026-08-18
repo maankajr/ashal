@@ -61,3 +61,14 @@ export async function logout() {
   const { data } = await axiosClient.post("/auth/logout");
   return data.data;
 }
+
+export async function forgotPassword(email) {
+  const { data } = await axiosClient.post("/auth/forgot-password", { email });
+  return data.data;
+}
+
+export async function resetPassword({ email, token, password }) {
+  const { data } = await axiosClient.post("/auth/reset-password", { email, token, password });
+  return data.data;
+}
+

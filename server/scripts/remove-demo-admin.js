@@ -1,0 +1,13 @@
+﻿import mongoose from "mongoose";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, "../.env") });
+await mongoose.connect(process.env.MONGODB_URI);
+const r = await mongoose.connection.db.collection("users").deleteOne({ email: "demo-admin@ashal.com" });
+console.log("Deleted:", r.deletedCount, "user(s)");
+const remaining = await mongoose.connection.db.collection("users").find({}).toArray();
+console.log("Remaining users:");
+remaining.forEach(u => console.log("  [" + u.role + "] " + u.name + " <" + u.email + ">"));
+await mongoose.disconnect();

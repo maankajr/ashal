@@ -24,6 +24,8 @@ import Orders from "./pages/Orders";
 import OrderDetails from "./pages/OrderDetails";
 import StoreDetails from "./pages/StoreDetails";
 import Contact from "./pages/Contact";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 // Lazy-loaded vendor portal routes (code-split)
 const VendorDashboard = lazy(() => import("./pages/vendor/VendorDashboard"));
@@ -67,6 +69,8 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/vendor/register" element={<VendorRegister />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
 
               {/* Customer Routes (Guarded against vendors -> redirect to /vendor/dashboard) */}
               <Route element={<CustomerRoute />}>

@@ -106,9 +106,9 @@ function Login() {
           </label>
 
           <div className="mt-2 text-right">
-            <button type="button" className="text-sm text-teal-700 hover:text-teal-800">
+            <Link to="/forgot-password" className="text-sm text-teal-700 hover:text-teal-800">
               Forgot password?
-            </button>
+            </Link>
           </div>
 
           <button

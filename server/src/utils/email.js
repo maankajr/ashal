@@ -189,6 +189,46 @@ export async function sendVendorNewOrderEmail({ vendorEmail, vendorName, storeNa
 }
 
 /**
+ * Password Reset Email
+ */
+export async function sendPasswordResetEmail({ email, name, resetUrl }) {
+  if (!email) return { success: false, error: "No email provided" };
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
+      <div style="background-color: #0f766e; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Ashal Marketplace</h1>
+      </div>
+      <div style="padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; background-color: #ffffff;">
+        <h2 style="font-size: 18px; color: #0f172a; margin-top: 0;">Reset your password</h2>
+        <p style="color: #475569; font-size: 14px;">Hi ${name || "there"},</p>
+        <p style="color: #475569; font-size: 14px;">
+          We received a request to reset the password for your Ashal account.
+          Click the button below to choose a new password. This link expires in <strong>1 hour</strong>.
+        </p>
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${resetUrl}" style="background-color: #0f766e; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 600;">
+            Reset Password
+          </a>
+        </div>
+        <p style="color: #64748b; font-size: 13px;">
+          If you did not request a password reset, you can safely ignore this email — your password will not change.
+        </p>
+        <p style="color: #94a3b8; font-size: 12px; margin-top: 30px; text-align: center;">
+          This link will expire in 1 hour. Do not share it with anyone.
+        </p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "Reset your Ashal password",
+    html,
+  });
+}
+
+/**
  * Contact Form Acknowledgment Email
  */
 export async function sendContactAcknowledgmentEmail({ name, email, subject, message }) {

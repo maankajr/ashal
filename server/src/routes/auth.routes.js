@@ -20,11 +20,21 @@ const registerLimiter = createRateLimiter({
   message: "Too many registration attempts. Please try again in 15 minutes.",
 });
 
+const forgotLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  keyPrefix: "rl:auth:forgot",
+  message: "Too many password reset requests. Please try again in 15 minutes.",
+});
+
 router.post("/register", registerLimiter, validateRegister, authController.register);
 router.post("/register/vendor", registerLimiter, validateRegister, authController.registerVendor);
 router.post("/login", loginLimiter, validateLogin, authController.login);
 router.post("/refresh", authController.refresh);
 router.get("/me", protect, authController.me);
 router.post("/logout", optionalProtect, authController.logout);
+router.post("/forgot-password", forgotLimiter, authController.forgotPassword);
+router.post("/reset-password", authController.resetPassword);
 
 export default router;
+

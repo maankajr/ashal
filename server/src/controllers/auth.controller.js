@@ -56,3 +56,20 @@ export const logout = asyncHandler(async (req, res) => {
   clearAuthCookies(res);
   return success(res, { message: "Logged out successfully" });
 });
+
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) {
+    return success(res, { message: "If that email is registered, a reset link has been sent." });
+  }
+  // Service intentionally swallows "user not found" to prevent enumeration
+  await authService.forgotPassword(email);
+  return success(res, { message: "If that email is registered, a reset link has been sent." });
+});
+
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { email, token, password } = req.body || {};
+  await authService.resetPassword({ email, token, password });
+  return success(res, { message: "Password reset successfully. You can now log in." });
+});
+
